@@ -53,17 +53,26 @@ function detectInvoiceVersion(xml: string): KsefInvoiceVersion | null;
 function detectUpoVersion(xml: string): KsefUpoVersion | null;
 
 function renderPdfFromXml(
-  xml: string | Uint8Array | ArrayBuffer | Blob
+  xml: string | Uint8Array | ArrayBuffer | Blob,
+  options?: { nrKSeF?: string; qrCode?: string },
 ): Promise<Uint8Array>;
 
 function renderPdfBase64FromXml(
-  xml: string | Uint8Array | ArrayBuffer | Blob
+  xml: string | Uint8Array | ArrayBuffer | Blob,
+  options?: { nrKSeF?: string; qrCode?: string },
 ): Promise<string>;
 
 function renderUpoPdfFromXml(
   xml: string | Uint8Array | ArrayBuffer | Blob
 ): Promise<Uint8Array>;
 ```
+
+#### `options`
+
+| Field    | Type     | Description |
+|----------|----------|-------------|
+| `nrKSeF` | `string` | KSeF invoice number displayed on the PDF. When omitted the label defaults to `OFFLINE`. |
+| `qrCode` | `string` | KSeF QR verification URL. When provided, a QR code is rendered on the PDF visualization. |
 
 Compatibility exports (upstream-like):
 - `generateInvoice`
@@ -72,10 +81,27 @@ Compatibility exports (upstream-like):
 - `generateFA2`
 - `generateFA3`
 
+## QR Code Support
+
+Since `v0.2.0` you can embed a KSeF QR verification code on the PDF:
+
+```ts
+const pdf = await renderPdfFromXml(xml, {
+  nrKSeF: '1234567890-20260101-ABC123-DE',
+  qrCode: 'https://qr.ksef.mf.gov.pl/invoice/1111111111/01-02-2026/UtQp9Gpc51y-u3xApZjIjgkpZ01js-J8KflSPW8WzIE',
+});
+```
+
+The QR verification URL format follows the official KSeF specification:
+```
+https://qr.ksef.mf.gov.pl/invoice/{NIP}/{DD-MM-YYYY}/{Base64URL-SHA256}
+```
+
+See [KSeF QR code docs](https://github.com/KSeF-CIRFMF/ksef-docs/blob/main/kody-qr.md) for details.
+
 ## Notes
 
 - This package renders PDFs from XML schema content only.
-- It does not inject `Numer KSEF` or QR payload values at wrapper API level.
 
 ## Minimal HTTP Service Example (n8n-friendly)
 
@@ -89,7 +115,10 @@ app.use(express.text({ type: ['application/xml', 'text/xml'], limit: '10mb' }));
 app.get('/health', (_req, res) => res.send('OK'));
 
 app.post('/render', async (req, res) => {
-  const pdf = await renderPdfFromXml(req.body);
+  const pdf = await renderPdfFromXml(req.body, {
+    nrKSeF: req.headers['x-ksef-number'] as string,
+    qrCode: req.headers['x-qr-code'] as string,
+  });
   res.setHeader('Content-Type', 'application/pdf');
   res.send(Buffer.from(pdf));
 });

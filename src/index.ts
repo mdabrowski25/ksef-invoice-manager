@@ -42,7 +42,10 @@ export function detectUpoVersion(xml: string): KsefUpoVersion | null {
   return null;
 }
 
-export async function renderPdfFromXml(xml: XmlInput): Promise<Uint8Array> {
+export async function renderPdfFromXml(
+  xml: XmlInput,
+  options?: { nrKSeF?: string; qrCode?: string },
+): Promise<Uint8Array> {
   const parsed = (await parseXML(xml)) as any;
   const version = normalizeInvoiceVersion(
     (parsed as any)?.Faktura?.Naglowek?.KodFormularza?._attributes?.kodSystemowy
@@ -53,7 +56,8 @@ export async function renderPdfFromXml(xml: XmlInput): Promise<Uint8Array> {
   }
 
   const additionalData: AdditionalDataTypes = {
-    nrKSeF: '',
+    nrKSeF: options?.nrKSeF ?? '',
+    qrCode: options?.qrCode,
   };
 
   let createdPdf: TCreatedPdf;
@@ -106,8 +110,11 @@ export async function renderUpoPdfFromXml(xml: XmlInput): Promise<Uint8Array> {
   return toUint8Array(pdfMake.createPdf(docDefinition));
 }
 
-export async function renderPdfBase64FromXml(xml: XmlInput): Promise<string> {
-  const pdf = await renderPdfFromXml(xml);
+export async function renderPdfBase64FromXml(
+  xml: XmlInput,
+  options?: { nrKSeF?: string; qrCode?: string },
+): Promise<string> {
+  const pdf = await renderPdfFromXml(xml, options);
   return Buffer.from(pdf).toString('base64');
 }
 
